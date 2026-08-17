@@ -1,0 +1,19 @@
+{
+  "name": "benzinverbrauch-tracker",
+  "version": "1.0.0",
+  "description": "HTML5-App mit Backend zum Erfassen von Tankvorgaengen. Literzahl, Preis und gefahrene Kilometer werden per Foto (OCR) erfasst, der Durchschnittsverbrauch wird berechnet und alles in der BenzinverbrauchsDB gespeichert.",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "postinstall": "node scripts/prepare-tessdata.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "@tesseract.js-data/deu": "^1.0.0",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "better-sqlite3": "^11.10.0",
+    "express": "^4.21.2",
+    "multer": "^2.0.1",
+    "tesseract.js": "^5.1.1"
+  }
+}
