@@ -146,6 +146,12 @@ button.secondary:disabled {
   margin: 0.1rem 0 0;
 }
 
+.hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0;
+}
+
 .status.error {
   color: var(--danger);
 }

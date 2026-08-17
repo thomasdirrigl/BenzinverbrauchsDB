@@ -70,11 +70,17 @@ $('btnScanKassenbon').addEventListener('click', () => {
         gefunden.push('Preis: ' + data.preis + ' €');
       }
       berechneVerbrauch();
-      setStatus(
-        $('statusKassenbon'),
-        gefunden.length ? 'Erkannt – ' + gefunden.join(', ') + '. Bitte pruefen.' : 'Nichts erkannt, bitte manuell eintragen.',
-        gefunden.length ? 'ok' : 'error'
-      );
+      if (gefunden.length === 0) {
+        setStatus($('statusKassenbon'), 'Nichts erkannt, bitte manuell eintragen.', 'error');
+      } else if (data.geschaetzt) {
+        setStatus(
+          $('statusKassenbon'),
+          'Keine Beschriftung erkannt, Werte grob geschaetzt – ' + gefunden.join(', ') + '. Unbedingt pruefen!',
+          'error'
+        );
+      } else {
+        setStatus($('statusKassenbon'), 'Erkannt – ' + gefunden.join(', ') + '. Bitte pruefen.', 'ok');
+      }
     },
   });
 });

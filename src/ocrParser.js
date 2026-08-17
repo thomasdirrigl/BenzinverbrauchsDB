@@ -70,6 +70,32 @@ function extractPreis(text) {
   return null;
 }
 
+function extractAllNumbers(text) {
+  const re = new RegExp(NUMBER, 'g');
+  const numbers = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const value = toNumber(m[1]);
+    if (value !== null) numbers.push(value);
+  }
+  return numbers;
+}
+
+// Fallback fuer Zapfsaeulen-Displays ohne erkennbare Beschriftung (z. B. "MENGE"/"SUMME"),
+// die nur die nackten Zahlen anzeigen. Nutzt die typische Groessenordnung:
+// Gesamtbetrag ist die groesste Zahl, die Literzahl liegt meist zwischen 3 und 200
+// und ist groesser als der Literpreis (der ueblicherweise unter 3 liegt).
+function extractLiterUndPreisFallback(text) {
+  const nums = extractAllNumbers(text).filter((n) => n > 0 && n < 1000);
+  if (nums.length < 2) return { liter: null, preis: null };
+
+  const preis = Math.max(...nums);
+  const literKandidaten = nums.filter((n) => n !== preis && n >= 3 && n <= 200);
+  const liter = literKandidaten.length > 0 ? Math.max(...literKandidaten) : null;
+
+  return { liter, preis };
+}
+
 function extractKm(text) {
   const keyword = new RegExp(`${NUMBER}\\s*km\\b`, 'gi');
   const candidates = [];
@@ -92,4 +118,10 @@ function extractKm(text) {
   return null;
 }
 
-module.exports = { recognizeText, extractLiter, extractPreis, extractKm };
+module.exports = {
+  recognizeText,
+  extractLiter,
+  extractPreis,
+  extractKm,
+  extractLiterUndPreisFallback,
+};

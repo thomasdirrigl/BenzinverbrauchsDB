@@ -2,7 +2,13 @@ const path = require('path');
 const express = require('express');
 const multer = require('multer');
 const db = require('./db');
-const { recognizeText, extractLiter, extractPreis, extractKm } = require('./ocrParser');
+const {
+  recognizeText,
+  extractLiter,
+  extractPreis,
+  extractKm,
+  extractLiterUndPreisFallback,
+} = require('./ocrParser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,11 +36,26 @@ app.post('/api/ocr/kassenbon', upload.single('foto'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Kein Foto empfangen.' });
   try {
     const text = await recognizeText(req.file.buffer);
-    res.json({
-      liter: extractLiter(text),
-      preis: extractPreis(text),
-      rawText: text,
-    });
+
+    let liter = extractLiter(text);
+    let preis = extractPreis(text);
+    let geschaetzt = false;
+
+    // Fallback fuer Zapfsaeulen-Displays ohne erkennbare Beschriftung (z. B. "MENGE"/"SUMME"):
+    // ordnet die reinen Zahlen anhand ihrer typischen Groessenordnung zu.
+    if (liter === null || preis === null) {
+      const fallback = extractLiterUndPreisFallback(text);
+      if (liter === null && fallback.liter !== null) {
+        liter = fallback.liter;
+        geschaetzt = true;
+      }
+      if (preis === null && fallback.preis !== null) {
+        preis = fallback.preis;
+        geschaetzt = true;
+      }
+    }
+
+    res.json({ liter, preis, geschaetzt, rawText: text });
   } catch (err) {
     res.status(500).json({ error: 'OCR fehlgeschlagen: ' + err.message });
   }
