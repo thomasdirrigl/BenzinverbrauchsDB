@@ -3,6 +3,12 @@
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 ENV NODE_ENV=production
+# Build-Tools fuer den Fallback-Kompilierlauf von better-sqlite3, falls kein
+# vorkompiliertes Binary fuer die Zielplattform geladen werden kann. Bleiben
+# nur im Build-Stage, landen nicht im finalen Image.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 # npm ci loest den postinstall-Hook aus, der die OCR-Sprachdaten
 # (@tesseract.js-data/deu, /eng) nach data/tessdata kopiert.
