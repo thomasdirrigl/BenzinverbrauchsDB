@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DB_DIR=/app/storage
+    volumes:
+      - benzinverbrauch-data:/app/storage
+
+volumes:
+  benzinverbrauch-data:

@@ -27,6 +27,8 @@ const upload = multer({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
+
 function round(value, decimals = 2) {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
