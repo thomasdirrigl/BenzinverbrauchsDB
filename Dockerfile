@@ -10,8 +10,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
-# npm ci loest den postinstall-Hook aus, der die OCR-Sprachdaten
-# (@tesseract.js-data/deu, /eng) nach data/tessdata kopiert.
+COPY scripts ./scripts
+# npm ci loest den postinstall-Hook aus, der scripts/prepare-tessdata.js
+# ausfuehrt und die OCR-Sprachdaten (@tesseract.js-data/deu, /eng) nach
+# data/tessdata kopiert - scripts/ muss deshalb vor npm ci vorhanden sein.
 RUN npm ci --omit=dev
 
 FROM node:22-bookworm-slim
