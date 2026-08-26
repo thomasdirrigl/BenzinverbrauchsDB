@@ -103,12 +103,30 @@ $('btnScanKm').addEventListener('click', () => {
   });
 });
 
+function zeigeGesamtstatistik(rows) {
+  const statistik = $('statistik');
+  if (rows.length === 0) {
+    statistik.hidden = true;
+    return;
+  }
+
+  const summeLiter = rows.reduce((sum, r) => sum + r.liter, 0);
+  const summeKm = rows.reduce((sum, r) => sum + r.km, 0);
+  const gesamtVerbrauch = (summeLiter / summeKm) * 100;
+
+  $('statVerbrauch').textContent = gesamtVerbrauch.toFixed(2);
+  $('statDetails').textContent =
+    `${rows.length} Tankvorgänge · ${summeKm.toFixed(1)} km · ${summeLiter.toFixed(2)} l`;
+  statistik.hidden = false;
+}
+
 async function ladeEintraege() {
   const res = await fetch('/api/eintraege');
   const rows = await res.json();
   const tbody = $('tabelleBody');
   tbody.innerHTML = '';
   $('leerHinweis').hidden = rows.length > 0;
+  zeigeGesamtstatistik(rows);
 
   for (const row of rows) {
     const tr = document.createElement('tr');
