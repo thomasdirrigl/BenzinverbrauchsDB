@@ -1,7 +1,24 @@
 const path = require('path');
+const sharp = require('sharp');
 const { createWorker } = require('tesseract.js');
 
 const TESSDATA_PATH = path.join(__dirname, '..', 'data', 'tessdata');
+
+// Handyfotos sind oft 20+ Megapixel und tragen die tatsaechliche Ausrichtung
+// nur als EXIF-Flag (Rohpixel bleiben "quer"). Tesseract liest Rohpixel ohne
+// EXIF zu beachten und liefert bei zu grossen/falsch gedrehten Bildern
+// praktisch nur noch Datenmuell. .rotate() ohne Argumente wendet die
+// EXIF-Orientation an und entfernt sie danach; resize begrenzt die laengste
+// Seite auf ein Mass, mit dem Tesseract zuverlaessig und schnell arbeitet.
+async function preprocessImage(imageBuffer) {
+  // PNG (verlustfrei) statt JPEG: eine erneute verlustbehaftete Kompression
+  // erzeugt Artefakte an Ziffernkanten, die OCR-Ergebnisse verfaelschen koennen.
+  return sharp(imageBuffer)
+    .rotate()
+    .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
+    .png()
+    .toBuffer();
+}
 
 let workerPromise = null;
 
@@ -17,8 +34,9 @@ function getWorker() {
 
 async function recognizeText(imageBuffer) {
   const worker = await getWorker();
-  const { data } = await worker.recognize(imageBuffer);
-  return data.text;
+  const processed = await preprocessImage(imageBuffer);
+  const { data } = await worker.recognize(processed);
+  return { text: data.text, confidence: data.confidence };
 }
 
 function toNumber(rawMatch) {
@@ -32,7 +50,8 @@ const NUMBER = '(\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{1,3})?|\\d+[.,]\\d{1,3})';
 
 function extractLiter(text) {
   const candidates = [];
-  const literKeyword = new RegExp(`${NUMBER}\\s*(?:l|ltr|liter)\\b`, 'gi');
+  // Fuehrendes \b verhindert, dass z. B. aus "4196" faelschlich "196" herausgeschnitten wird.
+  const literKeyword = new RegExp(`\\b${NUMBER}\\s*(?:l|ltr|liter)\\b`, 'gi');
   let m;
   while ((m = literKeyword.exec(text)) !== null) {
     const value = toNumber(m[1]);
@@ -40,7 +59,7 @@ function extractLiter(text) {
   }
   if (candidates.length > 0) return candidates[0];
 
-  const menge = new RegExp(`menge\\D{0,10}${NUMBER}`, 'gi');
+  const menge = new RegExp(`menge\\D{0,10}\\b${NUMBER}`, 'gi');
   while ((m = menge.exec(text)) !== null) {
     const value = toNumber(m[1]);
     if (value !== null && value > 0.5 && value < 200) return value;
@@ -50,7 +69,7 @@ function extractLiter(text) {
 
 function extractPreis(text) {
   const keywordLine = new RegExp(
-    `(?:gesamt(?:betrag)?|summe|betrag|zu\\s*zahlen|total)\\D{0,10}${NUMBER}\\s*(?:€|eur)?`,
+    `(?:gesamt(?:betrag)?|summe|betrag|zu\\s*zahlen|total)\\D{0,10}\\b${NUMBER}\\s*(?:€|eur)?`,
     'gi'
   );
   let m = keywordLine.exec(text);
@@ -59,7 +78,7 @@ function extractPreis(text) {
     if (value !== null && value > 0 && value < 1000) return value;
   }
 
-  const currency = new RegExp(`${NUMBER}\\s*(?:€|eur)\\b`, 'gi');
+  const currency = new RegExp(`\\b${NUMBER}\\s*(?:€|eur)\\b`, 'gi');
   const candidates = [];
   while ((m = currency.exec(text)) !== null) {
     const value = toNumber(m[1]);
@@ -97,7 +116,7 @@ function extractLiterUndPreisFallback(text) {
 }
 
 function extractKm(text) {
-  const keyword = new RegExp(`${NUMBER}\\s*km\\b`, 'gi');
+  const keyword = new RegExp(`\\b${NUMBER}\\s*km\\b`, 'gi');
   const candidates = [];
   let m;
   while ((m = keyword.exec(text)) !== null) {

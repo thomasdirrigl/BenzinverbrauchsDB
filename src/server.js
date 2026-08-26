@@ -34,10 +34,16 @@ function round(value, decimals = 2) {
   return Math.round(value * factor) / factor;
 }
 
+// Unterhalb dieser Tesseract-Gesamtkonfidenz (0-100) ist der erkannte Text so
+// unzuverlaessig, dass der reine Zahlen-Fallback (ohne Schluesselwort-Treffer)
+// mehr Schaden anrichtet als er nuetzt - er wuerde sonst aus Datenmuell
+// scheinbar plausible, aber frei erfundene Werte herausgreifen.
+const MIN_CONFIDENCE_FUER_FALLBACK = 60;
+
 app.post('/api/ocr/kassenbon', upload.single('foto'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Kein Foto empfangen.' });
   try {
-    const text = await recognizeText(req.file.buffer);
+    const { text, confidence } = await recognizeText(req.file.buffer);
 
     let liter = extractLiter(text);
     let preis = extractPreis(text);
@@ -45,7 +51,7 @@ app.post('/api/ocr/kassenbon', upload.single('foto'), async (req, res) => {
 
     // Fallback fuer Zapfsaeulen-Displays ohne erkennbare Beschriftung (z. B. "MENGE"/"SUMME"):
     // ordnet die reinen Zahlen anhand ihrer typischen Groessenordnung zu.
-    if (liter === null || preis === null) {
+    if ((liter === null || preis === null) && confidence >= MIN_CONFIDENCE_FUER_FALLBACK) {
       const fallback = extractLiterUndPreisFallback(text);
       if (liter === null && fallback.liter !== null) {
         liter = fallback.liter;
@@ -66,7 +72,7 @@ app.post('/api/ocr/kassenbon', upload.single('foto'), async (req, res) => {
 app.post('/api/ocr/kilometerstand', upload.single('foto'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Kein Foto empfangen.' });
   try {
-    const text = await recognizeText(req.file.buffer);
+    const { text } = await recognizeText(req.file.buffer);
     res.json({
       km: extractKm(text),
       rawText: text,
