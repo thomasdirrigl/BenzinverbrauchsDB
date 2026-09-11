@@ -68,8 +68,12 @@ function extractLiter(text) {
 }
 
 function extractPreis(text) {
+  // "Maximalbetrag" auf Kartenzahlungsbelegen ist das Autorisierungslimit der
+  // Karte, nicht der tatsaechlich gezahlte Betrag (der steht meist direkt
+  // danach als "Verfuegungsbetrag"/"Gesamtbetrag"). (?<!maximal) verhindert,
+  // dass die generische "betrag"-Regel faelschlich dort zuschlaegt.
   const keywordLine = new RegExp(
-    `(?:gesamt(?:betrag)?|summe|betrag|zu\\s*zahlen|total)\\D{0,10}\\b${NUMBER}\\s*(?:€|eur)?`,
+    `(?:gesamt(?:betrag)?|summe|(?<!maximal)betrag|zu\\s*zahlen|total)\\D{0,10}\\b${NUMBER}\\s*(?:€|eur)?`,
     'gi'
   );
   let m = keywordLine.exec(text);
