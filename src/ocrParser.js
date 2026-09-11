@@ -32,11 +32,34 @@ function getWorker() {
   return workerPromise;
 }
 
+// Unterhalb dieser Konfidenz gilt ein Ergebnis als moeglicherweise falsch
+// orientiert - dann werden zusaetzliche 90/180/270-Grad-Drehungen probiert.
+const MIN_CONFIDENCE_AKZEPTABEL = 60;
+
+async function ocrDurchlauf(worker, buffer) {
+  const { data } = await worker.recognize(buffer);
+  return { text: data.text, confidence: data.confidence };
+}
+
 async function recognizeText(imageBuffer) {
   const worker = await getWorker();
   const processed = await preprocessImage(imageBuffer);
-  const { data } = await worker.recognize(processed);
-  return { text: data.text, confidence: data.confidence };
+  let best = await ocrDurchlauf(worker, processed);
+
+  // Manche Fotos werden quer aufgenommen, ohne dass die Kamera ein
+  // kompensierendes EXIF-Orientation-Flag setzt (z. B. Orientation "1" trotz
+  // seitlich gehaltenem Handy). Die reine EXIF-Korrektur in preprocessImage
+  // greift dann nicht. Bei niedriger Konfidenz werden deshalb zusaetzlich
+  // die drei anderen Drehungen ausprobiert und das beste Ergebnis behalten.
+  if (best.confidence < MIN_CONFIDENCE_AKZEPTABEL) {
+    for (const grad of [90, 180, 270]) {
+      const rotiert = await sharp(processed).rotate(grad).png().toBuffer();
+      const ergebnis = await ocrDurchlauf(worker, rotiert);
+      if (ergebnis.confidence > best.confidence) best = ergebnis;
+    }
+  }
+
+  return best;
 }
 
 function toNumber(rawMatch) {
