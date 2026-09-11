@@ -90,13 +90,22 @@ function extractLiter(text) {
   return null;
 }
 
-function extractPreis(text) {
+function extractPreis(rawText) {
   // "Maximalbetrag" auf Kartenzahlungsbelegen ist das Autorisierungslimit der
   // Karte, nicht der tatsaechlich gezahlte Betrag (der steht meist direkt
-  // danach als "Verfuegungsbetrag"/"Gesamtbetrag"). (?<!maximal) verhindert,
-  // dass die generische "betrag"-Regel faelschlich dort zuschlaegt.
+  // danach als "Verfuegungsbetrag"/"Gesamtbetrag"). Die komplette Zeile wird
+  // vor jeder Zahlensuche entfernt, damit weder die Schluesselwort-Regel noch
+  // der generische Waehrungs-Fallback diese Zahl aufgreifen koennen - egal
+  // wie die OCR den Rest der Zeile im Detail liest.
+  // Leerzeichen vor dem Pruefen entfernen: OCR trennt "Maximalbetrag" auf
+  // schlecht lesbaren Fotos oft faelschlich in "Max imalbetrag" o.ae. auf.
+  const text = rawText
+    .split('\n')
+    .filter((zeile) => !zeile.replace(/\s+/g, '').toLowerCase().includes('maximal'))
+    .join('\n');
+
   const keywordLine = new RegExp(
-    `(?:gesamt(?:betrag)?|summe|(?<!maximal)betrag|zu\\s*zahlen|total)\\D{0,10}\\b${NUMBER}\\s*(?:€|eur)?`,
+    `(?:gesamt(?:betrag)?|summe|betrag|zu\\s*zahlen|total)\\D{0,10}\\b${NUMBER}\\s*(?:€|eur)?`,
     'gi'
   );
   let m = keywordLine.exec(text);
