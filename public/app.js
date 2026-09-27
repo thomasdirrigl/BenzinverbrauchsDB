@@ -53,6 +53,12 @@ async function scanFoto({ fileInputId, buttonId, statusId, endpoint, onResult })
   }
 }
 
+function zeigeRohtext(debugId, rawText) {
+  const details = $(debugId);
+  details.querySelector('textarea').value = rawText || '';
+  details.hidden = false;
+}
+
 $('btnScanKassenbon').addEventListener('click', () => {
   scanFoto({
     fileInputId: 'fotoKassenbon',
@@ -60,6 +66,7 @@ $('btnScanKassenbon').addEventListener('click', () => {
     statusId: 'statusKassenbon',
     endpoint: '/api/ocr/kassenbon',
     onResult: (data) => {
+      zeigeRohtext('debugKassenbon', data.rawText);
       const gefunden = [];
       if (data.liter !== null) {
         literInput.value = data.liter;
@@ -92,6 +99,7 @@ $('btnScanKm').addEventListener('click', () => {
     statusId: 'statusKm',
     endpoint: '/api/ocr/kilometerstand',
     onResult: (data) => {
+      zeigeRohtext('debugKm', data.rawText);
       if (data.km !== null) {
         kmInput.value = data.km;
         berechneVerbrauch();

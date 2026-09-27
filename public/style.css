@@ -160,6 +160,29 @@ button.secondary:disabled {
   color: #16a34a;
 }
 
+.debug {
+  margin-top: 0.4rem;
+}
+
+.debug summary {
+  font-size: 0.78rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.debug textarea {
+  width: 100%;
+  margin-top: 0.3rem;
+  font-family: monospace;
+  font-size: 0.75rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
