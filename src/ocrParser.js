@@ -88,13 +88,15 @@ function extractLiter(text) {
     if (value !== null && value > 0.5 && value < 200) return value;
   }
 
-  // OCR verwechselt die Liter-Einheit "l" haeufig mit der Ziffer "1" oder dem
-  // Grossbuchstaben "I" (z. B. "41,88 l" -> "41,88 1"). Um Fehltreffer zu
-  // vermeiden, wird das nur akzeptiert, wenn im selben Bereich zusaetzlich
-  // ein "EUR/l"-Preis-pro-Liter-Muster auftaucht - typisch fuer Kassenbons,
-  // sonst auf einem normalen Kassenbon kaum zufaellig vorkommend.
+  // OCR verwechselt die Liter-Einheit "l" haeufig mit der Ziffer "1", dem
+  // Grossbuchstaben "I" oder sogar Sonderzeichen wie "]" (z. B. "41,88 l" ->
+  // "41,88 1"). Um Fehltreffer zu vermeiden, wird das nur akzeptiert, wenn im
+  // selben Bereich zusaetzlich ein "EUR/"-Preis-pro-Liter-Muster auftaucht -
+  // typisch fuer Kassenbons, sonst kaum zufaellig vorkommend. Was genau nach
+  // dem Schraegstrich steht, wird bewusst nicht mehr geprueft, da dieses
+  // Zeichen je nach Foto/Schriftart sehr unterschiedlich gelesen wird.
   const literVerwechslung = new RegExp(
-    `\\b${NUMBER}\\s*[l1I]\\b(?=[\\s\\S]{0,20}(?:eur|€)\\s*/\\s*[l1I]\\b)`,
+    `\\b${NUMBER}\\s*[l1I]\\b(?=[\\s\\S]{0,20}(?:eur|€)\\s*/)`,
     'gi'
   );
   while ((m = literVerwechslung.exec(text)) !== null) {
@@ -166,7 +168,14 @@ function extractLiterUndPreisFallback(text) {
   return { liter, preis };
 }
 
-function extractKm(text) {
+function extractKm(rawText) {
+  // OCR liest das Komma bei Dezimalzahlen manchmal als Leerzeichen, z. B.
+  // "631,7 km" -> "631 7 km". Ohne Korrektur zerfaellt das in zwei Zahlen
+  // ("631" und "7"), von denen nur die zweite direkt vor "km" steht und
+  // faelschlich als Ergebnis genommen wuerde. Vor jeder Suche wird das
+  // Komma deshalb wiederhergestellt.
+  const text = rawText.replace(/\b(\d{1,4})\s+(\d{1,2})(\s*km\b)/gi, '$1,$2$3');
+
   const keyword = new RegExp(`\\b${NUMBER}\\s*km\\b`, 'gi');
   const candidates = [];
   let m;
