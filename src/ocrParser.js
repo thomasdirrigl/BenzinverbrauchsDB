@@ -87,6 +87,21 @@ function extractLiter(text) {
     const value = toNumber(m[1]);
     if (value !== null && value > 0.5 && value < 200) return value;
   }
+
+  // OCR verwechselt die Liter-Einheit "l" haeufig mit der Ziffer "1" oder dem
+  // Grossbuchstaben "I" (z. B. "41,88 l" -> "41,88 1"). Um Fehltreffer zu
+  // vermeiden, wird das nur akzeptiert, wenn im selben Bereich zusaetzlich
+  // ein "EUR/l"-Preis-pro-Liter-Muster auftaucht - typisch fuer Kassenbons,
+  // sonst auf einem normalen Kassenbon kaum zufaellig vorkommend.
+  const literVerwechslung = new RegExp(
+    `\\b${NUMBER}\\s*[l1I]\\b(?=[\\s\\S]{0,20}(?:eur|€)\\s*/\\s*[l1I]\\b)`,
+    'gi'
+  );
+  while ((m = literVerwechslung.exec(text)) !== null) {
+    const value = toNumber(m[1]);
+    if (value !== null && value > 0.5 && value < 200) return value;
+  }
+
   return null;
 }
 
@@ -157,9 +172,19 @@ function extractKm(text) {
   let m;
   while ((m = keyword.exec(text)) !== null) {
     const value = toNumber(m[1]);
-    if (value !== null && value > 0 && value < 5000) candidates.push(value);
+    if (value !== null && value > 0 && value < 5000) {
+      candidates.push({ value, hatKomma: m[1].includes(',') });
+    }
   }
-  if (candidates.length > 0) return candidates[0];
+  if (candidates.length > 0) {
+    // Displays zeigen oft Gesamtkilometerstand UND Trip-Zaehler nebeneinander
+    // ("... km 631,7 km"). Der Trip-Zaehler (das, was wir wollen) hat so gut
+    // wie immer eine Nachkommastelle, der Gesamtstand meist nicht - bei
+    // mehreren Treffern wird deshalb der erste mit Komma bevorzugt statt
+    // blind den ersten gefundenen Treffer zu nehmen.
+    const mitKomma = candidates.find((c) => c.hatKomma);
+    return (mitKomma ?? candidates[0]).value;
+  }
 
   const bare = new RegExp(`\\b${NUMBER}\\b`, 'g');
   while ((m = bare.exec(text)) !== null) {
